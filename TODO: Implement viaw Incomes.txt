@@ -1,0 +1,7 @@
+TODO: Implement viaw Incomes (Done)
+TODO: Implement to deduct from the income category
+TODO: Implement check for over transacting 
+TODO: Implement the main function Make it installable (Module) (Done)
+# if __name__ == "__main___":
+# mian()
+TODO: change your parameter name "type" (Done)

@@ -27,23 +27,23 @@ def save_data():
         json.dump(transactions, f, indent=2)
 
 # this function splits the categories by income and expense.
-def Category(type):
-    if type == "Income":
+def Category(TYPE):
+    if TYPE == "Income":
         print("[1] Salary")
         print("[2] Sales")
         print("[3] Gift")
         print("[4] Pension")
         print("[5] Others")
 
-        choice = input("Select an option (1 - 5): ").strip()
+        choice = input("Select an option (1 - 4): ").strip()
 
         if choice == '1': return 'Salary'
         elif choice == '2': return 'Sales'
         elif choice == '3': return 'Gift'
         elif choice == '4': return 'Pension'
-        elif choice == '5': return 'Others'
         else:
-            print("Invalid Choice. Please select a number between 1 and 5.")
+            print("Invalid Choice. Categories defaulted to others.")
+            return "Others"
     else:
         print("[1] Utility")
         print("[2] Transportation")
@@ -56,7 +56,7 @@ def Category(type):
         print("[9] Subscription")
         print("[10] Others")      
 
-        choice = input("Select an option (1 - 10): ").strip()
+        choice = input("Select an option (1 - 9): ").strip()
 
         if choice == '1': return 'Utility'
         elif choice == '2': return 'Transportation'
@@ -67,16 +67,61 @@ def Category(type):
         elif choice == '7': return 'Savings'
         elif choice == '8': return 'Family'
         elif choice == '9': return 'Subscription'
-        elif choice == '10': return 'Others'
         else:
-            print("Invalid Choice. Please select a number between 1 and 10.")
+            print("Invalid Choice. Category defaulted to others.")
+            return "Others"
 
-# define the function that adds the user transaction.
-def add_transaction(type):
-    type = type.title()
-    print(f"\n--- Add {type} ---")
+def income_category():
+    categories = []
 
-    category = Category(type)
+    for transaction in transactions:
+        if transaction['Type'] == "Income":
+            category = transaction["Category"]
+            if category not in categories:
+                categories.append(category)
+    return categories
+def income_balance(category):
+    total_income = 0
+    total_expense = 0
+
+    for transaction in transactions:
+        if transaction['Type'] == "Income" and transaction["Category"] == category:
+            total_income += transaction["Amount"]
+        elif transaction["Type"] == "Expense" and transaction.get("Source") == category:
+            total_expense += transaction["Amount"]
+
+    return total_income - total_expense
+
+# this function that adds the user transaction.
+def add_transaction(TYPE):
+    TYPE = TYPE.title()
+    print(f"\n--- Add {TYPE} ---")
+
+    source = None
+
+    if TYPE == "Expense":
+        income_categories = income_category()
+
+        if not income_categories:
+            print("\nNo income has been recorded yet.")
+            print("Please add an income before making an expense.")
+            return
+
+        available_categories = []
+
+        for category in income_categories:
+            balance = income_balance(category)
+
+            if balance > 0:
+                available_categories.append((category, balance))
+
+        if not available_categories:
+            print("\nYou have no income balance in this category.")
+            print("Expense cannot be recorded.")
+            return
+        
+
+    category = Category(TYPE)
     description = input("Enter a description (e.g: Lunch, Gift from mum): ").strip()
     if not description:
         description = 'Unspecified'
@@ -91,28 +136,69 @@ def add_transaction(type):
         except ValueError:
             print("This is not a valid amount. Enter a valid amount.")
 
-    transaction = {"Type": type, "Category": category, "Description": description, "Amount": amount, "Date": dt.date.today().isoformat()}    
+    transaction = {"Type": TYPE, "Category": category, "Description": description, "Amount": amount, "Date": dt.date.today().isoformat()}    
     transactions.append(transaction)
     save_data()
-    print(f"\n{type} of {amount} added under {category} successfully.")
+    print(f"\n{TYPE} of {amount} added under {category} successfully.")
 
 # this function view all the transactions that have been added by the user.
-def view_all():
-    print("\n--- All Transactions ---")
+def view_transaction():
     if not transactions:
         print("No transaction history.")
         return
-    print(f"{'Date':<12}{'Type':<10}{'Category':<15}{'Amount':>10}     Description")
+
     sorted_transaction = sorted(transactions, key=lambda t: t['Date'])
-    for transaction in sorted_transaction:
-        color = GREEN if transaction['Type'] == "Income" else RED
-        print(
-            f"{transaction['Date']:<12}"
-            f"{transaction['Type']:<10}"
-            f"{transaction['Category']:<15}"
-            f"{color}{transaction['Amount']:>10.2f}{RESET}    "
-            f"{transaction['Description']}"
+
+    print("Which transaction do you want to view?")
+    print("1. Income")
+    print("2. Expenses")
+    print("3. All Transaction")
+
+    choice = input("Select an option (1 - 3): ").strip()
+
+    if choice == '1':
+        income = [transaction for transaction in sorted_transaction if transaction['Type'] == 'Income']
+        if not income:
+            print("\nNo Income transaction history.")
+            return
+
+        print("\n--- All Incomes ---")
+        print(f"{'Date':<12}{'Category':<15}{'Amount':>10}    Description")
+        for transaction in income:
+            print(
+                f"{transaction['Date']:<12}"
+                f"{transaction['Category']:<15}"
+                f"{transaction['Amount']:>10.2f}    "
+                f"{transaction['Description']}"
+            )
+    elif choice == '2':
+            expenses = [transaction for transaction in sorted_transaction if transaction['Type'] == 'Expense']
+            if not expenses:
+                print("\nNo Expense transaction history.")
+                return
+            print("\n--- All Expenses ---")
+            print(f"{'Date':<12}{'Category':<15}{'Amount':>10}    Description")
+            for transaction in expenses:
+                print(
+                    f"{transaction['Date']:<12}"
+                    f"{transaction['Category']:<15}"
+                    f"{transaction['Amount']:>10.2f}    "
+                    f"{transaction['Description']}"
+                )
+    elif choice == '3':
+        print("\n--- All Transactions ---")
+        print(f"{'Date':<12}{'Type':<10}{'Category':<15}{'Amount':>10}     Description")
+        for transaction in sorted_transaction:
+            color = GREEN if transaction['Type'] == "Income" else RED
+            print(
+                f"{transaction['Date']:<12}"
+                f"{transaction['Type']:<10}"
+                f"{transaction['Category']:<15}"
+                f"{color}{transaction['Amount']:>10.2f}{RESET}    "
+                f"{transaction['Description']}"
         )
+    else:
+        print("Invalid Choice. Please select a number between 1 -3.")
 
 # this function get the summary of all the transaction
 def get_summary():
@@ -166,31 +252,35 @@ def view_by_category():
 
 load_data()
 
-while True:
-    print("\nMain Menu:")
-    print("[1] Add Income")
-    print("[2] Add Expense")
-    print("[3] View All Transaction")
-    print("[4] Summary")
-    print("[5] By Category")
-    print("[6] Exit")
-    print("\n")
+def main():
+    while True:
+        print("\nMain Menu:")
+        print("[1] Add Income")
+        print("[2] Add Expense")
+        print("[3] View Transaction")
+        print("[4] Summary")
+        print("[5] By Category")
+        print("[6] Exit")
+        print("\n")
 
-    # collect user choice
-    choice = input("Select an option (1 - 6): ").strip()
+        # collect user choice
+        choice = input("Select an option (1 - 6): ").strip()
 
-    if choice == "1":
-        add_transaction("income")
-    elif choice == "2":
-        add_transaction("expense")
-    elif choice == "3":
-        view_all()
-    elif choice == "4":
-        get_summary()
-    elif choice == "5":
-        view_by_category()
-    elif choice == "6":
-        print("\nGoodbye. Your transaction has been recorded.")
-        break
-    else:
-        print("Invalid choice. Please select a number between 1 and 6.")
+        if choice == "1":
+            add_transaction("income")
+        elif choice == "2":
+            add_transaction("expense")
+        elif choice == "3":
+            view_transaction()
+        elif choice == "4":
+            get_summary()
+        elif choice == "5":
+            view_by_category()
+        elif choice == "6":
+            print("\nGoodbye. Your transaction has been recorded.")
+            break
+        else:
+            print("Invalid choice. Please select a number between 1 and 6.")
+
+if __name__ == "__main__":
+    main()
