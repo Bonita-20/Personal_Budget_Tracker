@@ -134,7 +134,8 @@ def add_transaction(TYPE):
                 else:
                     print(f"Invalid choice. Select a number between 1 and {len(available_categories)}.")
             except ValueError:
-                print("Invalid input. Please enter a number.")    
+                print("Invalid input. Please enter a number.")   
+
     category = Category(TYPE)
     description = input("Enter a description (e.g: Lunch, Gift from mum): ").strip()
     if not description:
@@ -160,7 +161,7 @@ def add_transaction(TYPE):
 
             print(f"Income Category:    {source}")
             print(f"Available Balance:    {available_balance:,.2f}")
-            print(f"Expense Amount:    {amount:,.2f}")
+            print(f"Expense Amount:    ₦{amount:,.2f}")
             print(f"Deficit:    {Deficit:,.2f}")
 
             print("\nTransaction cancelled.")
@@ -172,13 +173,13 @@ def add_transaction(TYPE):
 
     transactions.append(transaction)
     save_data()
-    print(f"\n{TYPE} of {amount} added under {category} successfully.")
+    print(f"\n{TYPE} of ₦{amount} added under {category} successfully.")
 
     if TYPE == "Expense":
         remaining_balance = available_balance - amount
 
         print(f"Deducted from: {source}")
-        print(f"Remaining Balance In {source}:    {remaining_balance:,.2f}")
+        print(f"Remaining Balance In {source}:    ₦{remaining_balance:,.2f}")
 
 # this function view all the transactions that have been added by the user.
 def view_transaction(transactions):
@@ -202,12 +203,12 @@ def view_transaction(transactions):
             return
 
         print("\n--- All Incomes ---")
-        print(f"{'Date':<12}{'Category':<15}{'Amount':>10}    Description")
+        print(f"{'Date':<12}{'Category':<15}{'Amount':>15}    Description")
         for transaction in income:
             print(
                 f"{transaction['Date']:<12}"
                 f"{transaction['Category']:<15}"
-                f"{transaction['Amount']:>10.2f}    "
+                f"₦{transaction['Amount']:>15.2f}    "
                 f"{transaction['Description']}"
             )
     elif choice == '2':
@@ -216,24 +217,24 @@ def view_transaction(transactions):
                 print("\nNo Expense transaction history.")
                 return
             print("\n--- All Expenses ---")
-            print(f"{'Date':<12}{'Category':<15}{'Amount':>10}    Description")
+            print(f"{'Date':<12}{'Category':<15}{'Amount':>15}    Description")
             for transaction in expenses:
                 print(
                     f"{transaction['Date']:<12}"
                     f"{transaction['Category']:<15}"
-                    f"{transaction['Amount']:>10.2f}    "
+                    f"₦{transaction['Amount']:>15.2f}    "
                     f"{transaction['Description']}"
                 )
     elif choice == '3':
         print("\n--- All Transactions ---")
-        print(f"{'Date':<12}{'Type':<10}{'Category':<15}{'Amount':>10}     Description")
+        print(f"{'Date':<12}{'Type':<10}{'Category':<15}{'Amount':>15}     Description")
         for transaction in sorted_transaction:
             color = GREEN if transaction['Type'] == "Income" else RED
             print(
                 f"{transaction['Date']:<12}"
                 f"{transaction['Type']:<10}"
                 f"{transaction['Category']:<15}"
-                f"{color}{transaction['Amount']:>10.2f}{RESET}    "
+                f"{color}₦{transaction['Amount']:>15.2f}{RESET}    "
                 f"{transaction['Description']}"
         )
     else:
@@ -250,10 +251,10 @@ def get_summary(transactions):
     balance = total_income - total_expense
     status = "Surplus" if balance >= 0 else "Deficit"
 
-    print(f"Total Income: {total_income:>10.2f}")
-    print(f"Total Expenses: {total_expense:>10.2f}")
+    print(f"Total Income: ₦{total_income:>10.2f}")
+    print(f"Total Expenses: ₦{total_expense:>10.2f}")
     print("-" * 20)
-    print(f"Balance ({status}): {balance:>10.2f}")
+    print(f"Balance ({status}): ₦{balance:>10.2f}")
 
 # this function helps the user to view transaction by category under income or expense
 def view_by_category(transactions):
@@ -285,9 +286,9 @@ def view_by_category(transactions):
     print("-" * 42)
     for category, amount in sorted(totals.items(), key=lambda x: -x[1]):
         percent = (amount / grand_total) * 100 if grand_total else 0
-        print(f"{category:<20}${amount:>10.2f}{percent:>9.1f}%")
+        print(f"{category:<20}₦{amount:>10.2f}{percent:>9.1f}%")
     print("-" * 42)
-    print(f"{'Total':<20}${grand_total:>10.2f}")
+    print(f"{'Total':<20}₦{grand_total:>10.2f}")
 
 # this function deletes a transaction from the transactions list.
 def delete_transaction(transactions):
