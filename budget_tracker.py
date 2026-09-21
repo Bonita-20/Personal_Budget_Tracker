@@ -29,11 +29,11 @@ def save_data():
 # this function splits the categories by income and expense.
 def Category(TYPE):
     if TYPE == "Income":
+        print("Select an Income category.")
         print("[1] Salary")
         print("[2] Sales")
         print("[3] Gift")
         print("[4] Pension")
-        print("[5] Others")
 
         choice = input("Select an option (1 - 4): ").strip()
 
@@ -45,6 +45,7 @@ def Category(TYPE):
             print("Invalid Choice. Categories defaulted to others.")
             return "Others"
     else:
+        print("Select an expense category.")
         print("[1] Utility")
         print("[2] Transportation")
         print("[3] Debt")
@@ -53,8 +54,7 @@ def Category(TYPE):
         print("[6] HealthCare")
         print("[7] Savings")
         print("[8] Family")
-        print("[9] Subscription")
-        print("[10] Others")      
+        print("[9] Subscription")   
 
         choice = input("Select an option (1 - 9): ").strip()
 
@@ -119,8 +119,22 @@ def add_transaction(TYPE):
             print("\nYou have no income balance in this category.")
             print("Expense cannot be recorded.")
             return
-        
 
+        print("\nAvailable Income Categories:")
+        for index, (category, balance) in enumerate(available_categories, start=1):
+            print(f"[{index}] {category:<15} {balance:,.2f}")
+
+        while True:
+            choice = input("\nWhich income category do you want to deduct from? ").strip()
+            try:
+                choice = int(choice)
+                if 1 <= choice <= len(available_categories):
+                    source, available_balance = available_categories[choice - 1]
+                    break
+                else:
+                    print(f"Invalid choice. Select a number between 1 and {len(available_categories)}.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")    
     category = Category(TYPE)
     description = input("Enter a description (e.g: Lunch, Gift from mum): ").strip()
     if not description:
@@ -136,13 +150,38 @@ def add_transaction(TYPE):
         except ValueError:
             print("This is not a valid amount. Enter a valid amount.")
 
-    transaction = {"Type": TYPE, "Category": category, "Description": description, "Amount": amount, "Date": dt.date.today().isoformat()}    
+    if TYPE == "Expense":
+        if amount > available_balance:
+            Deficit = amount - available_balance
+
+            print("\n" + "=" * 20)
+            print("Insufficient Balance")
+            print("=" * 20)
+
+            print(f"Income Category:    {source}")
+            print(f"Available Balance:    {available_balance:,.2f}")
+            print(f"Expense Amount:    {amount:,.2f}")
+            print(f"Deficit:    {Deficit:,.2f}")
+
+            print("\nTransaction cancelled.")
+            return
+
+    transaction = {"Type": TYPE, "Category": category, "Description": description, "Amount": amount, "Date": dt.date.today().isoformat()} 
+    if TYPE == "Expense":
+        transaction["Source"] = source
+
     transactions.append(transaction)
     save_data()
     print(f"\n{TYPE} of {amount} added under {category} successfully.")
 
+    if TYPE == "Expense":
+        remaining_balance = available_balance - amount
+
+        print(f"Deducted from: {source}")
+        print(f"Remaining Balance In {source}:    {remaining_balance:,.2f}")
+
 # this function view all the transactions that have been added by the user.
-def view_transaction():
+def view_transaction(transactions):
     if not transactions:
         print("No transaction history.")
         return
@@ -201,7 +240,7 @@ def view_transaction():
         print("Invalid Choice. Please select a number between 1 -3.")
 
 # this function get the summary of all the transaction
-def get_summary():
+def get_summary(transactions):
     print("\n--- SUMMARY ---")
     if not transactions:
         print("No transactions history.")
@@ -217,7 +256,7 @@ def get_summary():
     print(f"Balance ({status}): {balance:>10.2f}")
 
 # this function helps the user to view transaction by category under income or expense
-def view_by_category():
+def view_by_category(transactions):
     print("\n--- View by Category ---")
     if not transactions:
         print("No transactions history.")
@@ -250,6 +289,98 @@ def view_by_category():
     print("-" * 42)
     print(f"{'Total':<20}${grand_total:>10.2f}")
 
+# this function deletes a transaction from the transactions list.
+def delete_transaction(transactions):
+    if not transactions:
+        print("\nNo transaction history.")
+        return
+
+    print("\n--- Delete Transaction ---")
+
+    for index, transaction in enumerate(transactions, start=1):
+        color = GREEN if transaction["Type"] == "Income" else RED
+
+        source = ""
+        if transaction["Type"] == "Expense":
+            source = f" | Source: {transaction.get('Source', 'Others')}"
+
+        print(
+            f"{index}. "
+            f"{transaction['Date']} | "
+            f"{transaction['Type']} | "
+            f"{transaction['Category']} | "
+            f"{color}₦{transaction['Amount']:,.2f}{RESET} | "
+            f"{transaction['Description']}"
+            f"{source}"
+        )
+
+    while True:
+        choice = input(
+            "\nEnter the transaction number to delete "
+            "(or 0 to cancel): "
+        ).strip()
+
+        try:
+            choice = int(choice)
+
+            if choice == 0:
+                print("Deletion cancelled.")
+                return
+
+            if 1 <= choice <= len(transactions):
+                break
+
+            print(f"Invalid choice. Enter a number between 1 and {len(transactions)}, or 0 to cancel.")
+
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+
+    transaction = transactions[choice - 1]
+
+    print("\nSelected Transaction:")
+    print(f"Type:        {transaction['Type']}")
+    print(f"Category:    {transaction['Category']}")
+    print(f"Amount:      ₦{transaction['Amount']:,.2f}")
+    print(f"Description: {transaction['Description']}")
+    print(f"Date:        {transaction['Date']}")
+
+    if transaction["Type"] == "Expense":
+        print(
+            f"Source:      "
+            f"{transaction.get('Source', 'Others')}"
+        )
+    # Confirming from the user the deletion
+    while True:
+        option = input(
+            "\nAre you sure you want to delete this transaction? (y/n): "
+        ).strip().lower()
+
+        if option == "y":
+            deleted_transaction = transactions.pop(choice - 1)
+            save_data()
+
+            print("\nTransaction deleted successfully.")
+
+            # Show restored balance for an expense
+            if deleted_transaction["Type"] == "Expense":
+                source = deleted_transaction.get("Source")
+
+                if source:
+                    balance = income_balance(source)
+
+                    print(
+                        f"Updated {source} balance: "
+                        f"₦{balance:,.2f}"
+                    )
+
+            return
+
+        elif option == "n":
+            print("Deletion cancelled.")
+            return
+
+        else:
+            print("Please enter Y or N.")
 load_data()
 
 def main():
@@ -260,23 +391,26 @@ def main():
         print("[3] View Transaction")
         print("[4] Summary")
         print("[5] By Category")
-        print("[6] Exit")
+        print("[6] Delete Transaction")
+        print("[7] Exit")
         print("\n")
 
         # collect user choice
-        choice = input("Select an option (1 - 6): ").strip()
+        choice = input("Select an option (1 - 7): ").strip()
 
         if choice == "1":
             add_transaction("income")
         elif choice == "2":
             add_transaction("expense")
         elif choice == "3":
-            view_transaction()
+            view_transaction(transactions)
         elif choice == "4":
-            get_summary()
+            get_summary(transactions)
         elif choice == "5":
-            view_by_category()
+            view_by_category(transactions)
         elif choice == "6":
+            delete_transaction(transactions)
+        elif choice == "7":
             print("\nGoodbye. Your transaction has been recorded.")
             break
         else:
