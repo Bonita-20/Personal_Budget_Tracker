@@ -84,6 +84,7 @@ def income_category(transactions):
             if category not in categories:
                 categories.append(category)
     return categories
+
 def income_balance(category):
     total_income = 0
     total_expense = 0
@@ -96,11 +97,37 @@ def income_balance(category):
 
     return total_income - total_expense
 
+# this function calculates the column width for the tables to be displayed.
+def calculate_col_width(transactions, target_columns, spacing=4):
+    widths = {}
+    for col in target_columns:
+        header_len = len(col)
+        
+        if not transactions:
+            widths[col] = header_len + spacing
+            continue
+            
+        lengths = []
+        for row in transactions:
+            val = row.get(col, '')
+            if col == "Amount":
+                try:
+                    formatted_val = f"₦{float(val):,.2f}"
+                except (ValueError, TypeError):
+                    formatted_val = str(val)
+                lengths.append(len(formatted_val))
+            else:
+                lengths.append(len(str(val)))
+                
+        widths[col] = max(header_len, max(lengths)) + spacing
+    return widths
+
+
 # this function adds an income transaction.
 def add_income(transactions):
     print("\n----- Add Income -----")
     category = Category("Income")
-    description = input("Enter a description (e.g: Lunch, Gift from mum): ").strip()
+    description = input("Enter a description (e.g: Monthly Salary, Gift from mum, Sale of clothes): ").strip()
     if not description:
         description = "Unspecified"
     while True:
@@ -118,11 +145,11 @@ def add_income(transactions):
     transaction = {'Type': 'Income',
                    'Category': category,
                    'Description': description,
-                   'Amount': f'amount:,.2f',
+                   'Amount': amount,
                    'Date': dt.date.today().isoformat()}
     transactions.append(transaction)
     save_data()
-    print(f"Income of {amount:,.2f} added under {category} successfully.")
+    print(f"Income of ₦{amount:,.2f} added under {category} successfully.")
 
 # this function adds an expense transaction.
 def add_expense(transactions):
@@ -139,7 +166,7 @@ def add_expense(transactions):
         balance = income_balance(category)
 
         if balance > 0:
-            available_categories.append(category)
+            available_categories.append([category, balance])
 
     if not available_categories:
         print("\nYou have no income balance in this category.")
@@ -155,7 +182,7 @@ def add_expense(transactions):
         try:
             choice = int(choice_str)
             if 1 <= choice <= len(available_categories):
-                source, available_balance = available_categories(choice - 1)
+                source, available_balance = available_categories[choice - 1]
                 break
             else:
                 print(f"Invalid option. Please select an option between 1 and {len(available_categories)}.")
@@ -190,14 +217,14 @@ def add_expense(transactions):
     transaction = {"Type": "Expense",
                    "Category": cat,
                    "Description": description,
-                   "Amount": f'amount:,.2f',
+                   "Amount": amount,
                    "Income Source": source,
                    "Date": dt.date.today().isoformat()}
     transactions.append(transaction)
     save_data()
-    print(f"Expense of {amount} taken from {source} added under {cat} successfully.")
+    print(f"Expense of ₦{amount:,.2f} taken from {source} added under {cat} successfully.")
     remaining_balance = available_balance - amount
-    print(f"The remaining balance in {source}: {remaining_balance:,.2f}.")
+    print(f"The remaining balance in {source}: ₦{remaining_balance:,.2f}.")
 
 # this function view all the transactions that have been added by the user.
 def view_transaction(transactions):
@@ -206,6 +233,9 @@ def view_transaction(transactions):
         return
 
     sorted_transaction = sorted(transactions, key=lambda t: t['Date'])
+    columns = ['Date', 'Type', 'Category', 'Amount', 'Income Source']
+
+    width = calculate_col_width(transactions, columns)
 
     print("Which transaction do you want to view?")
     print("1. Income")
@@ -221,12 +251,13 @@ def view_transaction(transactions):
             return
 
         print("\n--- All Incomes ---")
-        print(f"{'Date':<12}{'Category':<15}{'Amount':>10}    Description")
+        print(f"{'Date':<{width['Date']}}{'Category':<{width['Category']}}{'Amount':>{width['Amount']}}    Description")
         for transaction in income:
+            amount_str = f"₦{float(transaction['Amount']):,.2f}"
             print(
-                f"{transaction['Date']:<12}"
-                f"{transaction['Category']:<15}"
-                f"{transaction['Amount']:>10.2f}    "
+                f"{transaction['Date']:<{width['Date']}}"
+                f"{transaction['Category']:<{width['Category']}}"
+                f"{amount_str:>{width['Amount']}}    "
                 f"{transaction['Description']}"
             )
     elif choice == '2':
@@ -235,24 +266,27 @@ def view_transaction(transactions):
                 print("\nNo Expense transaction history.")
                 return
             print("\n--- All Expenses ---")
-            print(f"{'Date':<12}{'Category':<15}{'Amount':>10}    Description")
+            print(f"{'Date':<{width['Date']}}{'Category':<{width['Category']}}{'Amount':>{width['Amount']}}    {'Income Source':<{width['Income Source']}}    Description")
             for transaction in expenses:
+                amount_str = f"₦{float(transaction['Amount']):,.2f}"
                 print(
-                    f"{transaction['Date']:<12}"
-                    f"{transaction['Category']:<15}"
-                    f"{transaction['Amount']:>10.2f}    "
-                    f"{transaction['Description']}"
+                    f"{transaction['Date']:<{width['Date']}}"
+                    f"{transaction['Category']:<{width['Category']}}"
+                    f"{amount_str:>{width['Amount']}}"
+                    f"    {transaction['Income Source']:<{width['Income Source']}}"
+                    f"    {transaction['Description']}"
                 )
     elif choice == '3':
         print("\n--- All Transactions ---")
-        print(f"{'Date':<12}{'Type':<10}{'Category':<15}{'Amount':>10}     Description")
+        print(f"{'Date':<{width['Date']}}{'Type':<{width['Type']}}{'Category':<{width['Category']}}{'Amount':>{width['Amount']}}     Description")
         for transaction in sorted_transaction:
             color = GREEN if transaction['Type'] == "Income" else RED
+            amount_str = f"₦{float(transaction['Amount']):,.2f}"
             print(
-                f"{transaction['Date']:<12}"
-                f"{transaction['Type']:<10}"
-                f"{transaction['Category']:<15}"
-                f"{color}{transaction['Amount']:>10.2f}{RESET}    "
+                f"{transaction['Date']:<{width['Date']}}"
+                f"{transaction['Type']:<{width['Type']}}"
+                f"{transaction['Category']:<{width['Category']}}"
+                f"{color}{amount_str:>{width['Amount']}}{RESET}    "
                 f"{transaction['Description']}"
         )
     else:
@@ -269,10 +303,14 @@ def get_summary(transactions):
     balance = total_income - total_expense
     status = "Surplus" if balance >= 0 else "Deficit"
 
-    print(f"Total Income: {total_income:>10.2f}")
-    print(f"Total Expenses: {total_expense:>10.2f}")
-    print("-" * 20)
-    print(f"Balance ({status}): {balance:>10.2f}")
+    income_str = f"₦{total_income:,.2f}"
+    expense_str = f"₦{total_expense:,.2f}"
+    balance_str = f"₦{abs(balance):,.2f}" 
+
+    print(f"Total Income:       {income_str}")
+    print(f"Total Expenses:     {expense_str}")
+    print("-" * 40)
+    print(f"Balance ({status}):  {balance_str}")
 
 # this function helps the user to view transaction by category under income or expense
 def view_by_category(transactions):
@@ -299,18 +337,24 @@ def view_by_category(transactions):
         print(f"No {t_type} transactions recorded yet.")
         return
 
+    columns = ['Category', 'Amount', 'Percent']
+
+    w = calculate_col_width(transactions, columns)
+
     grand_total = sum(totals.values())
-    print(f"\n{'Category':<20}{'Amount':>12}{'Percent':>10}")
-    print("-" * 42)
+    print(f"\n{'Category':<{w['Category']}}{'Amount':>{w['Amount']}}{'Percent':>{w['Percent']}}")
+    print("-" * 40)
     for category, amount in sorted(totals.items(), key=lambda x: -x[1]):
         percent = (amount / grand_total) * 100 if grand_total else 0
-        print(f"{category:<20}${amount:>10.2f}{percent:>9.1f}%")
-    print("-" * 42)
-    print(f"{'Total':<20}${grand_total:>10.2f}")
-
-load_data()
+        amount_str = f"₦{amount:,.2f}"
+        percent_str = f"₦{percent:,.2f}"
+        print(f"{category:<{w['Category']}}{amount_str:>{w['Amount']}}{percent_str:>{w['Percent']}}%")
+    print("-" * 40)
+    grand_total_str = f"₦{grand_total:,.2f}"
+    print(f"{'Total':<{w['Category']}}{grand_total_str:>{w['Amount']}}")
 
 def main():
+    load_data()
     while True:
         print("\nMain Menu:")
         print("[1] Add Income")
